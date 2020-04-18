@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "youtube-archiver"
+version = "0.1.0"
+description = "Back-end API for YouTube Archiver"
+authors = ["Brian Turek <brian.turek@gmail.com>"]
+license = "MIT"
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+line_length = 120
+
+[tool.poetry.dependencies]
+python = "^3.7"
+janus = "^0.4.0"
+youtube-dl = "^2020.3.24"
+mypy_extensions = { version = "^0.4.3", python = "<3.7" }
+aiohttp = "^3.6.2"
+
+[tool.poetry.dev-dependencies]
+black = "^19.10b0"
+mypy = "^0.770"
+flake8 = "^3.7.9"
+flake8-isort = "^3.0.0"
+flake8-bugbear = "^20.1.4"
+flake8-blind-except = "^0.1.1"
+flake8-builtins = "^1.5.2"
+flake8-logging-format = "^0.6.0"
+flake8-docstrings = "^1.5.0"
+
+[tool.poetry.scripts]
+youtube_archiver_api = 'youtube_archiver.cli:server_cli'
+youtube_archiver_download = 'youtube_archiver.cli:download_cli'
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
