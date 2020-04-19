@@ -51,7 +51,7 @@ def process_output_dir(
     sanitized_title = sanitize_filename(pretty_name)
     if make_title_subdir:
         output_dir = output_dir / sanitized_title
-        output_dir.mkdir()
+        output_dir.mkdir(exist_ok=True)
 
     info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
 
