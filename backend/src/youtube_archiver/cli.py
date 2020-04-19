@@ -15,10 +15,11 @@ def server_cli() -> int:
     parser = argparse.ArgumentParser(description="Backend API server for YouTube Archive")
     parser.add_argument("--port", default=8081, help="TCP port to bind to")
     parser.add_argument("--download-dir", required=True, type=pathlib.Path, help="Path to the download directory")
+    parser.add_argument("--ffmpeg-dir", type=pathlib.Path, help="Directory containing FFMPEG")
 
     args = parser.parse_args()
 
-    server(args.download_dir, args.port)
+    server(args.download_dir, args.port, args.ffmpeg_dir)
 
     return 0
 
@@ -27,7 +28,7 @@ def download_cli() -> int:
     """
     Quasi-debugging CLI entrypoint that uses youtube-dl to download a video/audio clip.
 
-    :return: 0 on sucess
+    :return: 0 on success
     """
     parser = argparse.ArgumentParser(description="Backend API server for YouTube Archive")
     parser.add_argument("url", help="URL to process")
