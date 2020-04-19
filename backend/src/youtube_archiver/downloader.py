@@ -118,7 +118,7 @@ def download(
     if not output_dir.is_dir():
         raise ValueError("output_dir must be a directory")
 
-    postprocessors = []
+    postprocessors = [{"key": "FFmpegEmbedSubtitle"}]
     if extract_audio:
         postprocessors.append(
             {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": str(audio_quality)}
@@ -129,6 +129,7 @@ def download(
         progress_hooks.append(partial(process_hook, updates_queue, req_id=req_id))
 
     tmp_out = Path(mkdtemp())
+    # Setting both the automatic subs and manual subs is fine, the youtube-dl will prefer manual subs if present
     ytdl_opt = {
         "noplaylist": "true",
         "format": "bestvideo+bestaudio/best" if download_video else "bestaudio",
@@ -139,6 +140,9 @@ def download(
         "postprocessors": postprocessors,
         "ffmpeg_location": str(ffmpeg_location),
         "logger": ytdl_logger,
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "subtitleslangs": ["en"],
     }
 
     try:
