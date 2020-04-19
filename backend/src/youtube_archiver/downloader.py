@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
 from functools import partial
-from logging import getLogger
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
@@ -14,9 +14,10 @@ from youtube_dl.utils import sanitize_filename
 
 from .custom_types import CompletedUpdate, DownloadedUpdate, DownloadResult, UpdateMessage
 
-logger = getLogger(__name__)
-# youtube-dl irritatingly prints log messages if you don't give it a logger
-ytdl_logger = getLogger("ytdl")
+logger = logging.getLogger(__name__)
+# youtube-dl irritatingly prints log messages directly to stderr/stdout if you don't give it a logger
+ytdl_logger = logging.getLogger("ytdl")
+ytdl_logger.addHandler(logging.NullHandler())
 
 
 def process_output_dir(
@@ -41,12 +42,11 @@ def process_output_dir(
     #  * If video was requested but the source doesn't support separate bestvideo and bestaudio, the video file will be
     #    whatever file was downloaded (using best)
     # We additionally had to tell youtube-dl to not delete intermediate files if we wanted audio so clear those out.
-    leftover_files = {file for file in download_dir.glob("*")}
-
     info_file = list(download_dir.glob("*.json"))[0]
-    leftover_files.remove(info_file)
     with info_file.open() as f_in:
-        pretty_name = json.load(f_in)["title"]
+        metadata = json.load(f_in)
+
+    pretty_name = metadata["title"]
 
     sanitized_title = sanitize_filename(pretty_name)
     if make_title_subdir:
@@ -58,19 +58,25 @@ def process_output_dir(
     audio_file: Optional[Path] = None
     if extract_audio:
         audio_file = list(download_dir.glob("*.mp3"))[0]
-        leftover_files.remove(audio_file)
         audio_file = audio_file.rename(output_dir / audio_file.name)
 
     video_file: Optional[Path] = None
     # Audio identification performed first otherwise the mp3 would be picked as the fallback option if no mkv present
     if download_video:
         try:
-            video_file = list(download_dir.glob("*.mkv"))[0]
+            # Conceivably there are two mkv files, choose the one with the shortest name as youtube-dl includes the
+            # format number in the original filename but not the merged output name.
+            video_file = sorted(download_dir.glob("*.mkv"), key=lambda x: len(x.name))[0]
         except IndexError:
-            video_file = list(leftover_files)[0]
-            logger.debug("Could not find mkv file, falling back to whatever is present")
-        leftover_files.remove(video_file)
-        video_file = video_file.rename(output_dir / video_file.name)
+            # If a merge didn't happen, search for the downloaded streams for one that contains video.  Just assume
+            # that only 1 format was downloaded that had video and use it.
+            for requested_format in metadata["requested_formats"]:
+                if requested_format["vcodec"] != "none":
+                    video_file = list(download_dir.glob(f"*.{requested_format['ext']}"))[0]
+                    break
+
+        if video_file is not None:
+            video_file = video_file.rename(output_dir / video_file.name)
 
     return DownloadResult(pretty_name, output_dir, info_file, video_file, audio_file)
 
