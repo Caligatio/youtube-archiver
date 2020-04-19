@@ -105,7 +105,7 @@ def download(
     audio_quality: int = 5,
     updates_queue: Optional[Queue[UpdateMessage]] = None,
     req_id: Optional[str] = None,
-    ffmpeg_location: Optional[Path] = None,
+    ffmpeg_dir: Optional[Path] = None,
 ) -> DownloadResult:
     """
     Downloads and transcodes (if necessary) a specified online video or audio clip.
@@ -118,7 +118,7 @@ def download(
     :param audio_quality: The MP3 VBR audio quality (1-5)
     :param updates_queue: A queue to put real-time updates into
     :param req_id: An optional ID to include in all `updates-queue` related updates
-    :param ffmpeg_location: Path to the directory containing FFMPEG binaries
+    :param ffmpeg_dir: Path to the directory containing FFMPEG binaries
     :return: Tuple containing information and finalized paths for all the files
     """
     if not output_dir.is_dir():
@@ -144,7 +144,7 @@ def download(
         "merge_output_format": "mkv",
         "keepvideo": True if download_video else False,
         "postprocessors": postprocessors,
-        "ffmpeg_location": str(ffmpeg_location),
+        "ffmpeg_location": str(ffmpeg_dir),
         "logger": ytdl_logger,
         "writesubtitles": True,
         "writeautomaticsub": True,
