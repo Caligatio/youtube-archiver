@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from functools import partial
 from pathlib import Path
 from shutil import rmtree
+from subprocess import run  # noqa: S404
 from tempfile import mkdtemp
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from janus import Queue
 from youtube_dl import YoutubeDL
+from youtube_dl.postprocessor.ffmpeg import FFmpegMergerPP, encodeArgument, encodeFilename, prepend_extension
 from youtube_dl.utils import sanitize_filename
 
 from .custom_types import CompletedUpdate, DownloadedUpdate, DownloadResult, UpdateMessage
@@ -96,13 +99,42 @@ def process_hook(updates_queue: Queue[UpdateMessage], update: Dict[str, str], re
         updates_queue.sync_q.put_nowait(status_msg)
 
 
+def _ffmpeg_monkey_patch(self: FFmpegMergerPP, info: Dict[Any, Any], quality: int) -> Tuple[List[str], Dict[Any, Any]]:
+    """
+    A rather gross monkey patch to hack in the ability to transcode merged audio to AAC if necessary.
+
+    :param self: This monkey patch is for a class method so this is the normal "self" parameter
+    :param info: This is expected by the original method
+    :param quality: Extra argument added by the monkey patch, the AAC VBR quality (1-5)
+    :return: The expected original method output
+    """
+    filename = info["filepath"]
+    temp_filename = prepend_extension(filename, "temp")
+
+    # Only need to transcode if the source audio isn't already AAC
+    if self.get_audio_codec(info["__files_to_merge"][1]) != "aac":
+        # Making an assumption that we're using FFmpeg here.  If the Fraunhofer FDK AAC codec is available, prefer it
+        encoders_output = run(  # noqa: S603
+            [encodeFilename(self.executable), encodeArgument("-encoders")], capture_output=True
+        )
+        encoder = "libfdk_aac" if encoders_output.stdout.find(b"libfdk_aac") != -1 else "aac"
+        args = ["-c", "copy", "-map", "0:v:0", "-map", "1:a:0", "-c:a", encoder, "-q:a", str(quality)]
+    else:
+        args = ["-c", "copy", "-map", "0:v:0", "-map", "1:a:0"]
+
+    self._downloader.to_screen('[ffmpeg] Merging formats into "%s"' % filename)
+    self.run_ffmpeg_multiple_files(info["__files_to_merge"], temp_filename, args)
+    os.rename(encodeFilename(temp_filename), encodeFilename(filename))
+    return info["__files_to_merge"], info
+
+
 def download(
     output_dir: Path,
     make_title_subdir: bool,
     url: str,
     download_video: bool,
     extract_audio: bool,
-    audio_quality: int = 5,
+    audio_quality: int = 3,
     updates_queue: Optional[Queue[UpdateMessage]] = None,
     req_id: Optional[str] = None,
     ffmpeg_dir: Optional[Path] = None,
@@ -134,11 +166,15 @@ def download(
     if updates_queue:
         progress_hooks.append(partial(process_hook, updates_queue, req_id=req_id))
 
+    # Can monkey patch to add our transcoding functionality unconditionally as the merger post-processor will only be
+    # used if it's necessary.
+    FFmpegMergerPP.run = partial(_ffmpeg_monkey_patch, quality=audio_quality)
+
     tmp_out = Path(mkdtemp())
     # Setting both the automatic subs and manual subs is fine, the youtube-dl will prefer manual subs if present
     ytdl_opt = {
         "noplaylist": "true",
-        "format": "bestvideo+bestaudio/best" if download_video else "bestaudio",
+        "format": "bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best" if download_video else "bestaudio",
         "outtmpl": str(tmp_out) + "/%(title)s.%(ext)s",
         "progress_hooks": progress_hooks,
         "merge_output_format": "mkv",
