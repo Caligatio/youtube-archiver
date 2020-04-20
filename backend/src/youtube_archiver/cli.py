@@ -59,7 +59,7 @@ def download_cli() -> int:
         not args.skip_video,
         args.extract_audio,
         args.audio_vbr,
-        ffmpeg_location=args.ffmpeg_dir,
+        ffmpeg_dir=args.ffmpeg_dir,
     )
 
     print(f'Successfully processed "{download_results.pretty_name}"')
