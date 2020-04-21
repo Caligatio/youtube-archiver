@@ -95,7 +95,7 @@ def process_output_dir(
         if video_file is not None:
             video_file = video_file.rename(output_dir / video_file.name)
 
-    return DownloadResult(pretty_name, output_dir, info_file, video_file, audio_file)
+    return DownloadResult(pretty_name, sanitized_title, info_file, video_file, audio_file)
 
 
 def process_hook(updates_queue: Queue[UpdateMessage], update: Dict[str, str], req_id: Optional[str] = None) -> None:

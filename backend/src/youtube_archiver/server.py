@@ -119,6 +119,7 @@ def download_future_handler(
                 "status": UpdateStatusCode.COMPLETED,
                 "req_id": req_id,
                 "pretty_name": download_result.pretty_name,
+                "key": download_result.key,
                 "info_file": download_result.info_file,
                 "video_file": download_result.video_file,
                 "audio_file": download_result.audio_file,
@@ -197,14 +198,16 @@ async def delete_handler(request: web.Request) -> web.Response:
     try:
         resolved_dir.relative_to(request.app["download_dir"])
     except ValueError:
-        raise web.HTTPBadRequest(text="directory specified is forbidden")
+        raise web.HTTPBadRequest(text="key specified is forbidden")
 
     if resolved_dir.is_dir():
         shutil.rmtree(resolved_dir)
     else:
-        raise web.HTTPBadRequest(text="directory does not exist")
+        raise web.HTTPBadRequest(text="key does not exist")
 
-    return web.Response()
+    request.app["updates_queue"].sync_q.put_nowait({"status": UpdateStatusCode.DELETED, "key": req_params["key"]})
+
+    return web.Response(status=200)
 
 
 async def start_background_tasks(app: web.Application) -> None:

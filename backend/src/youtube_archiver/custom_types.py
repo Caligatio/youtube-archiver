@@ -13,6 +13,7 @@ class UpdateStatusCode(Enum):
     """Enum for the various update message status values."""
 
     COMPLETED = auto()
+    DELETED = auto()
     DOWNLOADED = auto()
     DOWNLOADING = auto()
     ERROR = auto()
@@ -22,10 +23,17 @@ class DownloadResult(NamedTuple):
     """Tuple containing all possible outputs from a download request."""
 
     pretty_name: str
-    output_dir: Path
+    key: str
     info_file: Path
     video_file: Optional[Path]
     audio_file: Optional[Path]
+
+
+class DeletedUpdate(TypedDict):
+    """Realtime update message indicating a key was deleted."""
+
+    status: Literal[UpdateStatusCode.DELETED]
+    key: Optional[str]
 
 
 class _ErrorUpdateNoReqID(TypedDict):
@@ -74,6 +82,7 @@ class _CompletedUpdateNoReqID(TypedDict):
 
     status: Literal[UpdateStatusCode.COMPLETED]
     pretty_name: str
+    key: str
     info_file: Optional[Path]
     video_file: Optional[Path]
     audio_file: Optional[Path]
@@ -86,4 +95,4 @@ class CompletedUpdate(_CompletedUpdateNoReqID, total=False):
 
 
 # Type that contains all possible realtime update message types
-UpdateMessage = Union[DownloadedUpdate, DownloadingUpdate, CompletedUpdate, ErrorUpdate]
+UpdateMessage = Union[DeletedUpdate, DownloadedUpdate, DownloadingUpdate, CompletedUpdate, ErrorUpdate]
