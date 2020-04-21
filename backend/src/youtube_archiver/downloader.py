@@ -65,7 +65,11 @@ def process_output_dir(
     pretty_name = metadata["title"]
     sanitized_title = sanitize_filename(pretty_name)
 
-    info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
+    # This was touched during existence checks if subdirectories aren't being made.  If the file exists, it's fine.
+    try:
+        info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
+    except FileExistsError:
+        pass
 
     audio_file: Optional[Path] = None
     if extract_audio:
