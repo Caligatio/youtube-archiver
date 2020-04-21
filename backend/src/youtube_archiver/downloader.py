@@ -15,13 +15,26 @@ from youtube_dl import YoutubeDL
 from youtube_dl.postprocessor.ffmpeg import FFmpegMergerPP, encodeArgument, encodeFilename, prepend_extension
 from youtube_dl.utils import sanitize_filename
 
-from .custom_types import (CompletedUpdate, DownloadedUpdate, DownloadingUpdate, DownloadResult, ErrorUpdate,
-                           UpdateMessage, UpdateStatusCode)
+from .custom_types import DownloadedUpdate, DownloadingUpdate, DownloadResult, UpdateMessage, UpdateStatusCode
 
 logger = logging.getLogger(__name__)
 # youtube-dl irritatingly prints log messages directly to stderr/stdout if you don't give it a logger
 ytdl_logger = logging.getLogger("ytdl")
 ytdl_logger.addHandler(logging.NullHandler())
+
+
+class AlreadyDownloaded(RuntimeError):
+    """Custom exception to indicate that a file/directory already exists, aka it was already downloaded."""
+
+    def __init__(self, msg: str, key: str) -> None:
+        """
+        Constructor.
+
+        :param msg: Normal exception error message.
+        :param key: The pretty name of the download that failed.
+        """
+        super().__init__(msg)
+        self.key = key
 
 
 def process_output_dir(
@@ -55,9 +68,17 @@ def process_output_dir(
     sanitized_title = sanitize_filename(pretty_name)
     if make_title_subdir:
         output_dir = output_dir / sanitized_title
-        output_dir.mkdir()
+        try:
+            output_dir.mkdir()
+        except FileExistsError as exc:
+            raise AlreadyDownloaded(str(exc), pretty_name) from exc
 
-    info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
+    # If we're here, that means either the subdirectory was made successfully or we're not making subdirectories.  If
+    # the latter and the below does not raise an exception, the file was not previously downloaded.
+    try:
+        info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
+    except FileExistsError as exc:
+        raise AlreadyDownloaded(str(exc), pretty_name) from exc
 
     audio_file: Optional[Path] = None
     if extract_audio:
@@ -207,27 +228,7 @@ def download(
                 json.dump(info, f_out)
 
         download_result = process_output_dir(tmp_out, output_dir, make_title_subdir, download_video, extract_audio)
-    except FileExistsError:
-        if updates_queue:
-            error_msg: ErrorUpdate = {"status": UpdateStatusCode.ERROR, "msg": "Request already downloaded"}
-            if req_id is not None:
-                error_msg["req_id"] = req_id
-            updates_queue.sync_q.put_nowait(error_msg)
-
-        raise
     finally:
         rmtree(tmp_out)
-
-    if updates_queue:
-        completed_msg: CompletedUpdate = {
-            "status": UpdateStatusCode.COMPLETED,
-            "pretty_name": download_result.pretty_name,
-            "info_file": download_result.info_file,
-            "video_file": download_result.video_file,
-            "audio_file": download_result.audio_file,
-        }
-        if req_id is not None:
-            completed_msg["req_id"] = req_id
-        updates_queue.sync_q.put_nowait(completed_msg)
 
     return download_result

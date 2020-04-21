@@ -14,8 +14,8 @@ from weakref import WeakSet
 from aiohttp import WSCloseCode, WSMsgType, web
 from janus import Queue
 
-from .custom_types import DownloadResult, UpdateStatusCode
-from .downloader import download
+from .custom_types import DownloadResult, UpdateMessage, UpdateStatusCode
+from .downloader import AlreadyDownloaded, download
 
 logger = logging.getLogger(__name__)
 
@@ -102,18 +102,33 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
     return ws
 
 
-def future_exception_squasher(url: str, req_id: str, future: asyncio.Future[DownloadResult]) -> None:
+def download_future_handler(
+    updates_queue: Queue[UpdateMessage], req_id: str, future: asyncio.Future[DownloadResult]
+) -> None:
     """
-    Filters out `FileExistError` from executor calls to `download`.  Propagates all other exceptions.
+    Filters out `AlreadyDownloaded` from executor calls to `download`.  Propagates all other exceptions.
 
-    :param url: The URL that was requested that caused this Future
+    :param updates_queue: A queue to put real-time updates into
     :param req_id: The request ID attached to this request
     :param future: The future itself
     """
     try:
-        future.result()
-    except FileExistsError:
-        logger.info("Request %s for %s was already downloaded", req_id, url)
+        download_result = future.result()
+        updates_queue.sync_q.put_nowait(
+            {
+                "status": UpdateStatusCode.COMPLETED,
+                "req_id": req_id,
+                "pretty_name": download_result.pretty_name,
+                "info_file": download_result.info_file,
+                "video_file": download_result.video_file,
+                "audio_file": download_result.audio_file,
+            }
+        )
+    except AlreadyDownloaded as exc:
+        updates_queue.sync_q.put_nowait(
+            {"status": UpdateStatusCode.ERROR, "msg": f'"{exc.key}" already downloaded', "req_id": req_id}
+        )
+        logger.info('Request %s for "%s" was already downloaded', req_id, exc.key)
 
 
 async def download_handler(request: web.Request) -> web.Response:
@@ -158,7 +173,7 @@ async def download_handler(request: web.Request) -> web.Response:
         request.app["ffmpeg_dir"],
     )
     # typeshed has a bug, see https://github.com/python/typeshed/pull/3935
-    future.add_done_callback(partial(future_exception_squasher, req_params["url"], req_id))  # type: ignore
+    future.add_done_callback(partial(download_future_handler, request.app["updates_queue"], req_id))  # type: ignore
 
     return web.json_response({"req_id": req_id}, status=202)
 
