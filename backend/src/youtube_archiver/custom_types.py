@@ -53,7 +53,7 @@ class _DownloadingUpdateNoReqID(TypedDict):
     total_bytes: Optional[int]
 
 
-class DownloadingUpdate(_DownloadedUpdateNoReqID, total=False):
+class DownloadingUpdate(_DownloadingUpdateNoReqID, total=False):
     """Realtime update message indicating a file is downloading, with optional `req_id`."""
 
     req_id: str

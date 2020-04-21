@@ -15,14 +15,8 @@ from youtube_dl import YoutubeDL
 from youtube_dl.postprocessor.ffmpeg import FFmpegMergerPP, encodeArgument, encodeFilename, prepend_extension
 from youtube_dl.utils import sanitize_filename
 
-from .custom_types import (
-    CompletedUpdate,
-    DownloadedUpdate,
-    DownloadingUpdate,
-    DownloadResult,
-    ErrorUpdate,
-    UpdateMessage,
-)
+from .custom_types import (CompletedUpdate, DownloadedUpdate, DownloadingUpdate, DownloadResult, ErrorUpdate,
+                           UpdateMessage)
 
 logger = logging.getLogger(__name__)
 # youtube-dl irritatingly prints log messages directly to stderr/stdout if you don't give it a logger
@@ -103,8 +97,8 @@ def process_hook(updates_queue: Queue[UpdateMessage], update: Dict[str, str], re
         downloading_msg: DownloadingUpdate = {
             "status": "downloading",
             "filename": Path(update["filename"]),
-            "downloaded_bytes": update["downloaded_bytes"],
-            "total_bytes": update["total_bytes"],
+            "downloaded_bytes": int(update["downloaded_bytes"]),
+            "total_bytes": int(update["total_bytes"]) if update["total_bytes"] else None
         }
         if req_id is not None:
             downloading_msg["req_id"] = req_id
@@ -213,9 +207,9 @@ def download(
                 json.dump(info, f_out)
 
         download_result = process_output_dir(tmp_out, output_dir, make_title_subdir, download_video, extract_audio)
-    except Exception as exc:
+    except FileExistsError:
         if updates_queue:
-            error_msg: ErrorUpdate = {"status": "error", "msg": str(exc)}
+            error_msg: ErrorUpdate = {"status": "error", "msg": "Request already downloaded"}
             if req_id is not None:
                 error_msg["req_id"] = req_id
             updates_queue.sync_q.put_nowait(error_msg)
