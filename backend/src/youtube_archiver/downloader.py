@@ -15,7 +15,14 @@ from youtube_dl import YoutubeDL
 from youtube_dl.postprocessor.ffmpeg import FFmpegMergerPP, encodeArgument, encodeFilename, prepend_extension
 from youtube_dl.utils import sanitize_filename
 
-from .custom_types import CompletedUpdate, DownloadedUpdate, DownloadResult, UpdateMessage
+from .custom_types import (
+    CompletedUpdate,
+    DownloadedUpdate,
+    DownloadingUpdate,
+    DownloadResult,
+    ErrorUpdate,
+    UpdateMessage,
+)
 
 logger = logging.getLogger(__name__)
 # youtube-dl irritatingly prints log messages directly to stderr/stdout if you don't give it a logger
@@ -54,7 +61,7 @@ def process_output_dir(
     sanitized_title = sanitize_filename(pretty_name)
     if make_title_subdir:
         output_dir = output_dir / sanitized_title
-        output_dir.mkdir(exist_ok=True)
+        output_dir.mkdir()
 
     info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
 
@@ -92,14 +99,26 @@ def process_hook(updates_queue: Queue[UpdateMessage], update: Dict[str, str], re
     :param update: The received update from youtube-dl
     :param req_id: Optional request ID that is inserted into the status message as "req_id"
     """
-    if update["status"] == "finished":
-        status_msg: DownloadedUpdate = {"status": "downloaded", "filename": Path(update["filename"])}
+    if update["status"] == "downloading":
+        downloading_msg: DownloadingUpdate = {
+            "status": "downloading",
+            "filename": Path(update["filename"]),
+            "downloaded_bytes": update["downloaded_bytes"],
+            "total_bytes": update["total_bytes"],
+        }
         if req_id is not None:
-            status_msg["req_id"] = req_id
-        updates_queue.sync_q.put_nowait(status_msg)
+            downloading_msg["req_id"] = req_id
+        updates_queue.sync_q.put_nowait(downloading_msg)
+    elif update["status"] == "finished":
+        downloaded_msg: DownloadedUpdate = {"status": "downloaded", "filename": Path(update["filename"])}
+        if req_id is not None:
+            downloaded_msg["req_id"] = req_id
+        updates_queue.sync_q.put_nowait(downloaded_msg)
 
 
-def _ffmpeg_monkey_patch(self: FFmpegMergerPP, info: Dict[Any, Any], quality: int) -> Tuple[List[str], Dict[Any, Any]]:
+def _ffmpeg_monkey_patch(
+    self: FFmpegMergerPP, info: Dict[Any, Any], quality: int = 3
+) -> Tuple[List[str], Dict[Any, Any]]:
     """
     A rather gross monkey patch to hack in the ability to transcode merged audio to AAC if necessary.
 
@@ -168,13 +187,13 @@ def download(
 
     # Can monkey patch to add our transcoding functionality unconditionally as the merger post-processor will only be
     # used if it's necessary.
-    FFmpegMergerPP.run = partial(_ffmpeg_monkey_patch, quality=audio_quality)
+    FFmpegMergerPP.run = _ffmpeg_monkey_patch
 
     tmp_out = Path(mkdtemp())
     # Setting both the automatic subs and manual subs is fine, the youtube-dl will prefer manual subs if present
     ytdl_opt = {
         "noplaylist": "true",
-        "format": "bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best" if download_video else "bestaudio",
+        "format": "bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best" if download_video else "bestaudio/best",
         "outtmpl": str(tmp_out) + "/%(title)s.%(ext)s",
         "progress_hooks": progress_hooks,
         "merge_output_format": "mkv",
@@ -194,11 +213,19 @@ def download(
                 json.dump(info, f_out)
 
         download_result = process_output_dir(tmp_out, output_dir, make_title_subdir, download_video, extract_audio)
+    except Exception as exc:
+        if updates_queue:
+            error_msg: ErrorUpdate = {"status": "error", "msg": str(exc)}
+            if req_id is not None:
+                error_msg["req_id"] = req_id
+            updates_queue.sync_q.put_nowait(error_msg)
+
+        raise
     finally:
         rmtree(tmp_out)
 
     if updates_queue:
-        status_msg: CompletedUpdate = {
+        completed_msg: CompletedUpdate = {
             "status": "completed",
             "pretty_name": download_result.pretty_name,
             "info_file": download_result.info_file,
@@ -206,7 +233,7 @@ def download(
             "audio_file": download_result.audio_file,
         }
         if req_id is not None:
-            status_msg["req_id"] = req_id
-        updates_queue.sync_q.put_nowait(status_msg)
+            completed_msg["req_id"] = req_id
+        updates_queue.sync_q.put_nowait(completed_msg)
 
     return download_result

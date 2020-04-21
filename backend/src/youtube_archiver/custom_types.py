@@ -18,6 +18,19 @@ class DownloadResult(NamedTuple):
     audio_file: Optional[Path]
 
 
+class _ErrorUpdateNoReqID(TypedDict):
+    """Realtime update message indicating an error was encountered."""
+
+    status: Literal["error"]
+    msg: str
+
+
+class ErrorUpdate(_ErrorUpdateNoReqID, total=False):
+    """Realtime update message indicating an error was encountered, with optional `req_id`."""
+
+    req_id: str
+
+
 class _DownloadedUpdateNoReqID(TypedDict):
     """Realtime update message indicating a file was downloaded."""
 
@@ -27,6 +40,21 @@ class _DownloadedUpdateNoReqID(TypedDict):
 
 class DownloadedUpdate(_DownloadedUpdateNoReqID, total=False):
     """Realtime update message indicating a file was downloaded, with optional `req_id`."""
+
+    req_id: str
+
+
+class _DownloadingUpdateNoReqID(TypedDict):
+    """Realtime update message indicating a file is downloading."""
+
+    status: Literal["downloading"]
+    filename: Path
+    downloaded_bytes: int
+    total_bytes: Optional[int]
+
+
+class DownloadingUpdate(_DownloadedUpdateNoReqID, total=False):
+    """Realtime update message indicating a file is downloading, with optional `req_id`."""
 
     req_id: str
 
@@ -48,4 +76,4 @@ class CompletedUpdate(_CompletedUpdateNoReqID, total=False):
 
 
 # Type that contains all possible realtime update message types
-UpdateMessage = Union[DownloadedUpdate, CompletedUpdate]
+UpdateMessage = Union[DownloadedUpdate, DownloadingUpdate, CompletedUpdate, ErrorUpdate]
