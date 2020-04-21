@@ -68,17 +68,9 @@ def process_output_dir(
     sanitized_title = sanitize_filename(pretty_name)
     if make_title_subdir:
         output_dir = output_dir / sanitized_title
-        try:
-            output_dir.mkdir()
-        except FileExistsError as exc:
-            raise AlreadyDownloaded(str(exc), pretty_name) from exc
+        output_dir.mkdir()
 
-    # If we're here, that means either the subdirectory was made successfully or we're not making subdirectories.  If
-    # the latter and the below does not raise an exception, the file was not previously downloaded.
-    try:
-        info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
-    except FileExistsError as exc:
-        raise AlreadyDownloaded(str(exc), pretty_name) from exc
+    info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
 
     audio_file: Optional[Path] = None
     if extract_audio:
@@ -223,9 +215,19 @@ def download(
 
     try:
         with YoutubeDL(ytdl_opt) as ytdl:
-            info = ytdl.extract_info(url)
+            info = ytdl.extract_info(url, download=False)
+            pretty_name = info["title"]
+            sanitized_title = sanitize_filename(pretty_name)
+
+            if (not make_title_subdir and (output_dir / f"{sanitized_title}.json").exists()) or (
+                make_title_subdir and (output_dir / sanitized_title).exists()
+            ):
+                raise AlreadyDownloaded("File already downloaded", pretty_name)
+
             with (tmp_out / "info.json").open("w") as f_out:
                 json.dump(info, f_out)
+
+            ytdl.download_with_info_file(tmp_out / "info.json")
 
         download_result = process_output_dir(tmp_out, output_dir, make_title_subdir, download_video, extract_audio)
     finally:
