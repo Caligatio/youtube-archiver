@@ -38,7 +38,7 @@ class AlreadyDownloaded(RuntimeError):
 
 
 def process_output_dir(
-    download_dir: Path, output_dir: Path, make_title_subdir: bool, download_video: bool, extract_audio: bool
+    download_dir: Path, output_dir: Path, download_video: bool, extract_audio: bool
 ) -> DownloadResult:
     """
     Parses the output from a youtube-dl run and determines which files are the finalized video and/or audio files.
@@ -47,7 +47,6 @@ def process_output_dir(
 
     :param download_dir: Directory that contains all the youtube-dl downloaded files
     :param output_dir: Desired output directory
-    :param make_title_subdir: Flag indicating whether to create a subdirectory in `output_dir` named after title
     :param download_video: Flag indicating whether video is to be retained
     :param extract_audio: Flag indicating whether audio is to be retained
     :return: Tuple containing information and finalized paths for all the files
@@ -64,18 +63,14 @@ def process_output_dir(
         metadata = json.load(f_in)
 
     pretty_name = metadata["title"]
-
     sanitized_title = sanitize_filename(pretty_name)
-    if make_title_subdir:
-        output_dir = output_dir / sanitized_title
-        output_dir.mkdir()
 
     info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
 
     audio_file: Optional[Path] = None
     if extract_audio:
         audio_file = list(download_dir.glob("*.mp3"))[0]
-        audio_file = audio_file.rename(output_dir / audio_file.name)
+        audio_file = audio_file.rename(output_dir / f"{sanitized_title}.{audio_file.suffix}")
 
     video_file: Optional[Path] = None
     # Audio identification performed first otherwise the mp3 would be picked as the fallback option if no mkv present
@@ -93,7 +88,7 @@ def process_output_dir(
                     break
 
         if video_file is not None:
-            video_file = video_file.rename(output_dir / video_file.name)
+            video_file = video_file.rename(output_dir / f"{sanitized_title}.{video_file.suffix}")
 
     return DownloadResult(pretty_name, sanitized_title, info_file, video_file, audio_file)
 
@@ -219,9 +214,13 @@ def download(
             pretty_name = info["title"]
             sanitized_title = sanitize_filename(pretty_name)
 
-            if (not make_title_subdir and (output_dir / f"{sanitized_title}.json").exists()) or (
-                make_title_subdir and (output_dir / sanitized_title).exists()
-            ):
+            try:
+                if make_title_subdir:
+                    output_dir = output_dir / sanitized_title
+                    output_dir.mkdir()
+                else:
+                    (output_dir / f"{sanitized_title}.json").touch()
+            except FileExistsError:
                 raise AlreadyDownloaded("File already downloaded", pretty_name)
 
             with (tmp_out / "info.json").open("w") as f_out:
@@ -229,7 +228,7 @@ def download(
 
             ytdl.download_with_info_file(tmp_out / "info.json")
 
-        download_result = process_output_dir(tmp_out, output_dir, make_title_subdir, download_video, extract_audio)
+        download_result = process_output_dir(tmp_out, output_dir, download_video, extract_audio)
     finally:
         rmtree(tmp_out)
 
