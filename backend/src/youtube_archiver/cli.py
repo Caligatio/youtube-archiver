@@ -1,4 +1,5 @@
 import argparse
+import logging
 import pathlib
 from sys import stderr
 
@@ -15,11 +16,23 @@ def server_cli() -> int:
     parser = argparse.ArgumentParser(description="Backend API server for YouTube Archive")
     parser.add_argument("--port", default=8081, help="TCP port to bind to")
     parser.add_argument("--download-dir", required=True, type=pathlib.Path, help="Path to the download directory")
+    parser.add_argument(
+        "--downloads-prefix", default="/downloads", help="Path/string to prepend to generated download links"
+    )
     parser.add_argument("--ffmpeg-dir", type=pathlib.Path, help="Directory containing FFMPEG")
+    parser.add_argument(
+        "--logging", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO", help="Logging level"
+    )
 
     args = parser.parse_args()
 
-    server(args.download_dir, args.port, args.ffmpeg_dir)
+    log_level = getattr(logging, args.logging)
+    logging.basicConfig(level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    ytdl_logger = logging.getLogger("ytdl")
+    # Things that youtube-dl considers warnings can be squelched
+    ytdl_logger.setLevel(level=max(logging.ERROR, log_level))
+
+    server(args.download_dir, args.downloads_prefix, args.port, args.ffmpeg_dir)
 
     return 0
 

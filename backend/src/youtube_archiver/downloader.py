@@ -16,7 +16,7 @@ from youtube_dl.postprocessor.ffmpeg import FFmpegMergerPP, encodeArgument, enco
 from youtube_dl.utils import sanitize_filename
 
 from .custom_types import (CompletedUpdate, DownloadedUpdate, DownloadingUpdate, DownloadResult, ErrorUpdate,
-                           UpdateMessage)
+                           UpdateMessage, UpdateStatusCode)
 
 logger = logging.getLogger(__name__)
 # youtube-dl irritatingly prints log messages directly to stderr/stdout if you don't give it a logger
@@ -95,16 +95,16 @@ def process_hook(updates_queue: Queue[UpdateMessage], update: Dict[str, str], re
     """
     if update["status"] == "downloading":
         downloading_msg: DownloadingUpdate = {
-            "status": "downloading",
+            "status": UpdateStatusCode.DOWNLOADING,
             "filename": Path(update["filename"]),
             "downloaded_bytes": int(update["downloaded_bytes"]),
-            "total_bytes": int(update["total_bytes"]) if update["total_bytes"] else None
+            "total_bytes": int(update["total_bytes"]) if update["total_bytes"] else None,
         }
         if req_id is not None:
             downloading_msg["req_id"] = req_id
         updates_queue.sync_q.put_nowait(downloading_msg)
     elif update["status"] == "finished":
-        downloaded_msg: DownloadedUpdate = {"status": "downloaded", "filename": Path(update["filename"])}
+        downloaded_msg: DownloadedUpdate = {"status": UpdateStatusCode.DOWNLOADED, "filename": Path(update["filename"])}
         if req_id is not None:
             downloaded_msg["req_id"] = req_id
         updates_queue.sync_q.put_nowait(downloaded_msg)
@@ -209,7 +209,7 @@ def download(
         download_result = process_output_dir(tmp_out, output_dir, make_title_subdir, download_video, extract_audio)
     except FileExistsError:
         if updates_queue:
-            error_msg: ErrorUpdate = {"status": "error", "msg": "Request already downloaded"}
+            error_msg: ErrorUpdate = {"status": UpdateStatusCode.ERROR, "msg": "Request already downloaded"}
             if req_id is not None:
                 error_msg["req_id"] = req_id
             updates_queue.sync_q.put_nowait(error_msg)
@@ -220,7 +220,7 @@ def download(
 
     if updates_queue:
         completed_msg: CompletedUpdate = {
-            "status": "completed",
+            "status": UpdateStatusCode.COMPLETED,
             "pretty_name": download_result.pretty_name,
             "info_file": download_result.info_file,
             "video_file": download_result.video_file,

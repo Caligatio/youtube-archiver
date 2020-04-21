@@ -1,4 +1,5 @@
 import sys
+from enum import Enum, auto
 from pathlib import Path
 from typing import NamedTuple, Optional, Union
 
@@ -6,6 +7,15 @@ if sys.version_info > (3, 7):
     from typing import Literal, TypedDict
 else:
     from mypy_extensions import Literal, TypedDict
+
+
+class UpdateStatusCode(Enum):
+    """Enum for the various update message status values."""
+
+    COMPLETED = auto()
+    DOWNLOADED = auto()
+    DOWNLOADING = auto()
+    ERROR = auto()
 
 
 class DownloadResult(NamedTuple):
@@ -21,7 +31,7 @@ class DownloadResult(NamedTuple):
 class _ErrorUpdateNoReqID(TypedDict):
     """Realtime update message indicating an error was encountered."""
 
-    status: Literal["error"]
+    status: Literal[UpdateStatusCode.ERROR]
     msg: str
 
 
@@ -34,7 +44,7 @@ class ErrorUpdate(_ErrorUpdateNoReqID, total=False):
 class _DownloadedUpdateNoReqID(TypedDict):
     """Realtime update message indicating a file was downloaded."""
 
-    status: Literal["downloaded"]
+    status: Literal[UpdateStatusCode.DOWNLOADED]
     filename: Path
 
 
@@ -47,7 +57,7 @@ class DownloadedUpdate(_DownloadedUpdateNoReqID, total=False):
 class _DownloadingUpdateNoReqID(TypedDict):
     """Realtime update message indicating a file is downloading."""
 
-    status: Literal["downloading"]
+    status: Literal[UpdateStatusCode.DOWNLOADING]
     filename: Path
     downloaded_bytes: int
     total_bytes: Optional[int]
@@ -62,7 +72,7 @@ class DownloadingUpdate(_DownloadingUpdateNoReqID, total=False):
 class _CompletedUpdateNoReqID(TypedDict):
     """Realtime update message indicating a download request was completed."""
 
-    status: Literal["completed"]
+    status: Literal[UpdateStatusCode.COMPLETED]
     pretty_name: str
     info_file: Optional[Path]
     video_file: Optional[Path]
