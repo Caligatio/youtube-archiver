@@ -128,10 +128,10 @@ function handleWSMessage(event) {
       </div>`;
     }
   } else if (msg.status === "DOWNLOADED" && trackedIds.has(msg.req_id)) {
-    const dlDiv = document.getElementById(`${msg.req_id}:${msg.filename}:div`);
-    if (dlDiv) {
-      dlDiv.remove();
-    }
+    const progressBar = document.getElementById(
+      `${msg.req_id}:${msg.filename}:progress`
+    );
+    progressBar.value = "-";
   }
 }
 
