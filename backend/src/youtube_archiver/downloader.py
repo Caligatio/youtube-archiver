@@ -74,7 +74,7 @@ def process_output_dir(
     audio_file: Optional[Path] = None
     if extract_audio:
         audio_file = list(download_dir.glob("*.mp3"))[0]
-        audio_file = audio_file.rename(output_dir / f"{sanitized_title}.{audio_file.suffix}")
+        audio_file = audio_file.rename(output_dir / f"{sanitized_title}{audio_file.suffix}")
 
     video_file: Optional[Path] = None
     # Audio identification performed first otherwise the mp3 would be picked as the fallback option if no mkv present
@@ -92,7 +92,7 @@ def process_output_dir(
                     break
 
         if video_file is not None:
-            video_file = video_file.rename(output_dir / f"{sanitized_title}.{video_file.suffix}")
+            video_file = video_file.rename(output_dir / f"{sanitized_title}{video_file.suffix}")
 
     return DownloadResult(pretty_name, sanitized_title, info_file, video_file, audio_file)
 
