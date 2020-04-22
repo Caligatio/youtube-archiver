@@ -46,10 +46,12 @@ async def update_publisher(app: web.Application) -> None:
                     update["audio_file"] = (
                         app["download_prefix"] / update["audio_file"].relative_to(app["download_dir"])
                     ).as_posix()
-                if update["info_file"]:
-                    update["info_file"] = (
-                        app["download_prefix"] / update["info_file"].relative_to(app["download_dir"])
-                    ).as_posix()
+                update["info_file"] = (
+                    app["download_prefix"] / update["info_file"].relative_to(app["download_dir"])
+                ).as_posix()
+                update["path"] = (
+                    app["download_prefix"] / update["path"].relative_to(app["download_dir"])
+                ).as_posix()
 
             update["status"] = update["status"].name
             # The websocket updates are best effort, not required.  Don't wait for it to finish
@@ -116,10 +118,11 @@ def download_future_handler(
         download_result = future.result()
         updates_queue.sync_q.put_nowait(
             {
-                "status": UpdateStatusCode.COMPLETED,
                 "req_id": req_id,
+                "status": UpdateStatusCode.COMPLETED,
                 "pretty_name": download_result.pretty_name,
                 "key": download_result.key,
+                "path": download_result.info_file.parent,
                 "info_file": download_result.info_file,
                 "video_file": download_result.video_file,
                 "audio_file": download_result.audio_file,

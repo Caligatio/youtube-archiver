@@ -83,7 +83,8 @@ class _CompletedUpdateNoReqID(TypedDict):
     status: Literal[UpdateStatusCode.COMPLETED]
     pretty_name: str
     key: str
-    info_file: Optional[Path]
+    path: Path
+    info_file: Path
     video_file: Optional[Path]
     audio_file: Optional[Path]
 
