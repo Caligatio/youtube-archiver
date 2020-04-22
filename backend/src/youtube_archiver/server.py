@@ -72,7 +72,8 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
 
     available_downloads = []
     for child in request.app["download_dir"].iterdir():
-        if not child.is_dir():
+        # Directories are made as hobo semaphore, it needs a .json file in it to actually have results.
+        if not child.is_dir() or len(child.glob("*.json")) == 0:
             continue
         available_downloads.append(
             {
