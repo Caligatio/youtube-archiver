@@ -49,9 +49,7 @@ async def update_publisher(app: web.Application) -> None:
                 update["info_file"] = (
                     app["download_prefix"] / update["info_file"].relative_to(app["download_dir"])
                 ).as_posix()
-                update["path"] = (
-                    app["download_prefix"] / update["path"].relative_to(app["download_dir"])
-                ).as_posix()
+                update["path"] = (app["download_prefix"] / update["path"].relative_to(app["download_dir"])).as_posix()
 
             update["status"] = update["status"].name
             # The websocket updates are best effort, not required.  Don't wait for it to finish

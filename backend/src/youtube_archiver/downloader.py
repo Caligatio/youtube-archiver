@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 from functools import partial
 from pathlib import Path
-from shutil import rmtree
 from subprocess import run  # noqa: S404
 from tempfile import mkdtemp
 from typing import Any, Dict, List, Optional, Tuple
@@ -67,14 +67,16 @@ def process_output_dir(
 
     # This was touched during existence checks if subdirectories aren't being made.  If the file exists, it's fine.
     try:
-        info_file = info_file.rename(output_dir / f"{sanitized_title}.json")
+        shutil.move(str(info_file), str(output_dir / f"{sanitized_title}.json"))
+        info_file = output_dir / f"{sanitized_title}.json"
     except FileExistsError:
         pass
 
     audio_file: Optional[Path] = None
     if extract_audio:
         audio_file = list(download_dir.glob("*.mp3"))[0]
-        audio_file = audio_file.rename(output_dir / f"{sanitized_title}{audio_file.suffix}")
+        shutil.move(str(audio_file), str(output_dir / f"{sanitized_title}{audio_file.suffix}"))
+        audio_file = output_dir / f"{sanitized_title}{audio_file.suffix}"
 
     video_file: Optional[Path] = None
     # Audio identification performed first otherwise the mp3 would be picked as the fallback option if no mkv present
@@ -92,7 +94,8 @@ def process_output_dir(
                     break
 
         if video_file is not None:
-            video_file = video_file.rename(output_dir / f"{sanitized_title}{video_file.suffix}")
+            shutil.move(str(video_file), str(output_dir / f"{sanitized_title}{video_file.suffix}"))
+            video_file = output_dir / f"{sanitized_title}{video_file.suffix}"
 
     return DownloadResult(pretty_name, sanitized_title, info_file, video_file, audio_file)
 
@@ -205,12 +208,14 @@ def download(
         "merge_output_format": "mkv",
         "keepvideo": True if download_video else False,
         "postprocessors": postprocessors,
-        "ffmpeg_location": str(ffmpeg_dir),
         "logger": ytdl_logger,
         "writesubtitles": True,
         "writeautomaticsub": True,
         "subtitleslangs": ["en"],
     }
+
+    if ffmpeg_dir:
+        ytdl_opt["ffmpeg_location"] = str(ffmpeg_dir)
 
     try:
         with YoutubeDL(ytdl_opt) as ytdl:
@@ -234,6 +239,6 @@ def download(
 
         download_result = process_output_dir(tmp_out, output_dir, download_video, extract_audio)
     finally:
-        rmtree(tmp_out)
+        shutil.rmtree(tmp_out)
 
     return download_result
