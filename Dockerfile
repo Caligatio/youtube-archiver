@@ -8,10 +8,12 @@ FROM python:3-buster
 
 ENV PYTHONUNBUFFERED=1
 
-COPY --from=wheel_builder /out/*.whl /tmp/
+
 RUN apt-get update && apt-get install --no-install-recommends -y ffmpeg nginx && apt-get clean && rm -rf /var/lib/apt/lists/* && \
-  pip3 install --no-cache-dir /tmp/*.whl supervisor && rm /tmp/*.whl && \
   useradd -r python && usermod -g www-data python && mkdir /data && chown python:www-data /data
+
+COPY --from=wheel_builder /out/*.whl /tmp/
+RUN pip3 install --no-cache-dir /tmp/*.whl supervisor && rm /tmp/*.whl
 
 COPY frontend/ /var/www/html
 COPY default_site /etc/nginx/sites-available/default
