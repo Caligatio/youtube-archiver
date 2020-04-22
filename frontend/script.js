@@ -19,7 +19,7 @@ function createDownloadListing(prettyName, key, path) {
 
   newRow.id = key;
   nameCell.innerHTML = prettyName;
-  downloadCell.innerHTML = `<a href="${path}">Download</a>`;
+  downloadCell.innerHTML = `<a href="${path}/">Download</a>`;
   managementCell.innerHTML = `<i class="fas fa-trash" style="color: red" onclick="removeDownload('${key}')"></i>`;
   table.classList.remove("is-hidden");
   document.getElementById("noAvailableFiles").classList.add("is-hidden");
