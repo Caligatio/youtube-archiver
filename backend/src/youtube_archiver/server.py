@@ -65,7 +65,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
     :param request: The incoming (empty) request
     :return: :mod:`aiohttp` mandated response type
     """
-    ws = web.WebSocketResponse()
+    ws = web.WebSocketResponse(heartbeat=5)
     await ws.prepare(request)
 
     request.app["websockets"].add(ws)
