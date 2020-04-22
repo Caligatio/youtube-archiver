@@ -131,7 +131,7 @@ function handleWSMessage(event) {
     const progressBar = document.getElementById(
       `${msg.req_id}:${msg.filename}:progress`
     );
-    progressBar.value = "-";
+    progressBar.removeAttribute("value");
   }
 }
 
