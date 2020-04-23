@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y ffmpeg nginx &&
 COPY --from=wheel_builder /out/*.whl /tmp/
 RUN pip3 install --no-cache-dir /tmp/*.whl supervisor && rm /tmp/*.whl
 
-COPY frontend/ /var/www/html
+COPY frontend/src /var/www/html
 COPY default_site /etc/nginx/sites-available/default
 COPY supervisord.conf /etc/supervisor/supervisord.conf
 
