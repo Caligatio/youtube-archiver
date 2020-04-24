@@ -24,5 +24,19 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1"
   },
+  "prettier": {
+    "semi": false,
+    "printWidth": 120,
+    "singleQuote": true,
+    "proseWrap": "always",
+    "overrides": [
+      {
+        "files": "*.md",
+        "options": {
+          "printWidth": 80
+        }
+      }
+    ]
+  },
   "private": true
 }

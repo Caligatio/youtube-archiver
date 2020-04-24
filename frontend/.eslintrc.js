@@ -2,19 +2,18 @@ module.exports = {
   env: {
     browser: true,
     es6: true,
-    node: false
+    node: false,
   },
-  extends: [
-    'standard'
-  ],
+  extends: ['standard'],
   globals: {
     Atomics: 'readonly',
-    SharedArrayBuffer: 'readonly'
+    SharedArrayBuffer: 'readonly',
   },
   parserOptions: {
     ecmaVersion: 6,
-    sourceType: 'script'
+    sourceType: 'script',
   },
   rules: {
-  }
+    'space-before-function-paren': ['error', { anonymous: 'always', named: 'never', asyncArrow: 'always' }],
+  },
 }

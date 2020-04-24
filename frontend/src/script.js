@@ -10,7 +10,7 @@ const trackedIds = new window.Set()
  * @param {string} key Unique key that identifies this download (use for deletes).
  * @param {string} path Relative path to the download directory for this item.
  */
-function createDownloadListing (prettyName, key, path) {
+function createDownloadListing(prettyName, key, path) {
   const table = document.getElementById('availableFiles')
   const tbody = table.getElementsByTagName('tbody')[0]
   const newRow = tbody.insertRow(0)
@@ -29,7 +29,7 @@ function createDownloadListing (prettyName, key, path) {
 /**
  * Requests a download of a resource given the parameters in the form on the page.
  */
-function download () {
+function download() {
   const url = document.getElementById('url')
   const downloadType = document.querySelector('input[name="download_type"]:checked').value
   const params = {}
@@ -82,7 +82,7 @@ function download () {
  *
  * @param {*} event The websocket event.
  */
-function handleWSMessage (event) {
+function handleWSMessage(event) {
   const msg = JSON.parse(event.data)
   const table = document.getElementById('availableFiles')
   const tbody = table.getElementsByTagName('tbody')[0]
@@ -114,9 +114,7 @@ function handleWSMessage (event) {
       }
     }
   } else if (msg.status === 'DOWNLOADING' && trackedIds.has(msg.req_id)) {
-    const progressBar = document.getElementById(
-      `${msg.req_id}:${msg.filename}:progress`
-    )
+    const progressBar = document.getElementById(`${msg.req_id}:${msg.filename}:progress`)
     const reqDiv = document.getElementById(`${msg.req_id}:div`)
 
     if (progressBar) {
@@ -129,10 +127,15 @@ function handleWSMessage (event) {
       </div>`
     }
   } else if (msg.status === 'DOWNLOADED' && trackedIds.has(msg.req_id)) {
-    const progressBar = document.getElementById(
-      `${msg.req_id}:${msg.filename}:progress`
-    )
+    const progressBar = document.getElementById(`${msg.req_id}:${msg.filename}:progress`)
     progressBar.removeAttribute('value')
+  } else if (msg.status === 'ERROR' && trackedIds.has(msg.req_id)) {
+    const reqDiv = document.getElementById(`${msg.req_id}:div`)
+    const progressBars = reqDiv.getElementsByTagName('progress')
+    for (let i = progressBars.length - 1; i > 0; i--) {
+      progressBars[i].remove()
+    }
+    reqDiv.innerHTML += `<p class="help is-danger">Error: ${msg.msg}</p>`
   }
 }
 
@@ -141,7 +144,7 @@ function handleWSMessage (event) {
  *
  * @param {string} key The reference key that identifies a previous download.
  */
-function removeDownload (key) {
+function removeDownload(key) {
   const request = new window.XMLHttpRequest()
 
   request.error = function () {
@@ -156,7 +159,7 @@ function removeDownload (key) {
 /**
  * Connects to the server status websocket on window load.
  */
-function connectWS () {
+function connectWS() {
   const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws'
   const ws = new window.WebSocket(`${wsProto}://${window.location.host}/api/status`)
   ws.onmessage = handleWSMessage
