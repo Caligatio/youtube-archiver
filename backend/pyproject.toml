@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "youtube-archiver"
-version = "0.1.0"
+version = "1.0.0"
 description = "Back-end API for YouTube Archiver"
 authors = ["Brian Turek <brian.turek@gmail.com>"]
 license = "MIT"
