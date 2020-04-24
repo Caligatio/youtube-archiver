@@ -87,7 +87,7 @@ function handleWSMessage(event) {
   const table = document.getElementById('availableFiles')
   const tbody = table.getElementsByTagName('tbody')[0]
 
-  if (msg.downloads) {
+  if (msg.status === 'CONNECTED') {
     msg.downloads.forEach((download) => {
       createDownloadListing(download.pretty_name, download.key, download.path)
     })

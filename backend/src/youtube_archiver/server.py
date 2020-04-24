@@ -87,7 +87,7 @@ async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
     # Sort the downloads in alphabetical order
     available_downloads.sort(key=lambda x: x["pretty_name"])
 
-    await ws.send_json({"downloads": available_downloads})
+    await ws.send_json({"downloads": available_downloads, "status": "CONNECTED"})
     try:
         async for msg in ws:
             if msg.type == WSMsgType.TEXT:
