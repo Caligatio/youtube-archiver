@@ -1,4 +1,4 @@
-FROM python:3-buster as wheel_builder
+FROM python:3-slim-buster as wheel_builder
 
 RUN pip3 install poetry
 
@@ -7,7 +7,7 @@ COPY backend ./backend
 RUN cd backend && poetry build && mkdir /out/ && cp dist/*.whl /out/
 
 # Final image
-FROM python:3-buster
+FROM python:3-slim-buster
 
 ENV PYTHONUNBUFFERED=1
 
