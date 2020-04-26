@@ -17,11 +17,20 @@ function createDownloadListing(prettyName, key, path) {
   const nameCell = newRow.insertCell()
   const downloadCell = newRow.insertCell()
   const managementCell = newRow.insertCell()
+  const deleteIconSpan = document.createElement('span')
 
   newRow.id = key
   nameCell.innerHTML = prettyName
   downloadCell.innerHTML = `<a href="${path}/">Download</a>`
-  managementCell.innerHTML = `<i class="fas fa-trash" style="color: red" onclick="removeDownload('${key}')"></i>`
+
+  /* Need to wrap the Font Awesome icon in a span in order to have something stable to attach events to.
+  FA replaces the <i> tag with a <svg> tag so attaching directly to the FA resource does not work */
+  deleteIconSpan.innerHTML = '<i class="fas fa-trash"></i>'
+  managementCell.appendChild(deleteIconSpan)
+  deleteIconSpan.addEventListener('click', function () {
+    removeDownload(key)
+  })
+
   table.classList.remove('is-hidden')
   document.getElementById('noAvailableFiles').classList.add('is-hidden')
 }

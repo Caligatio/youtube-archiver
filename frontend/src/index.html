@@ -1,107 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YouTube Archiver</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.8.2/css/bulma.min.css"
+      integrity="sha256-qS+snwBgqr+iFVpBB58C9UCxKFhyL03YHpZfdNUhSEw="
+      crossorigin="anonymous"
+    />
+    <script
+      defer
+      src="https://use.fontawesome.com/releases/v5.13.0/js/all.js"
+      integrity="sha256-KzZiKy0DWYsnwMF+X1DvQngQ2/FxF7MF3Ff72XcpuPs="
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      body {
+        margin: 0.5em;
+      }
+      .fa-trash {
+        color: #ff0000;
+      }
+    </style>
+    <script src="script.js"></script>
+  </head>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>YouTube Archiver</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.2/css/bulma.min.css"
-    integrity="sha256-qS+snwBgqr+iFVpBB58C9UCxKFhyL03YHpZfdNUhSEw=" crossorigin="anonymous">
-  <script defer src="https://use.fontawesome.com/releases/v5.13.0/js/all.js"
-    integrity="sha256-KzZiKy0DWYsnwMF+X1DvQngQ2/FxF7MF3Ff72XcpuPs=" crossorigin="anonymous"></script>
-  <style>
-    body {
-      margin: 0.5em;
-    }
-  </style>
-  <script src="script.js"></script>
-</head>
-
-<body>
-  <section class="section">
-    <div class="container">
-      <h1 class="title">
-        YouTube Archiver
-      </h1>
-    </div>
-  </section>
-  <section>
-    <div class="container">
-      <h2 class="title is-5">New Request</h2>
-      <div class="field is-horizontal">
-        <div class="field-label">
-          <label class="label" for="url">Source</label>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">
+          YouTube Archiver
+        </h1>
+      </div>
+    </section>
+    <section>
+      <div class="container">
+        <h2 class="title is-5">New Request</h2>
+        <div class="field is-horizontal">
+          <div class="field-label">
+            <label class="label" for="url">Source</label>
+          </div>
+          <div class="field-body">
+            <div class="field">
+              <input class="input" type="text" id="url" placeholder="URL to Download" />
+              <p class="help is-danger is-hidden" id="urlError">URL is required</p>
+            </div>
+          </div>
         </div>
-        <div class="field-body">
-          <div class="field">
-            <input class="input" type="text" id="url" placeholder="URL to Download">
-            <p class="help is-danger is-hidden" id="urlError">URL is required</p>
+        <div class="field is-horizontal">
+          <div class="field-label">
+            <label class="label">Download</label>
+          </div>
+          <div class="field-body">
+            <div class="control">
+              <label class="radio">
+                <input type="radio" name="download_type" value="both" checked />
+                Both (MKV and MP3)
+              </label>
+              <label class="radio">
+                <input type="radio" name="download_type" value="video" />
+                Video (MKV)
+              </label>
+              <label class="radio">
+                <input type="radio" name="download_type" value="audio" />
+                Audio (MP3)
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="field is-horizontal">
+          <div class="field-label">
+            <!-- Left empty for spacing -->
+          </div>
+          <div class="field-body">
+            <button class="button is-primary" onclick="download()">
+              Download Now
+            </button>
           </div>
         </div>
       </div>
-      <div class="field is-horizontal">
-        <div class="field-label">
-          <label class="label">Download</label>
-        </div>
-        <div class="field-body">
-          <div class="control">
-            <label class="radio">
-              <input type="radio" name="download_type" value="both" checked>
-              Both (MKV and MP3)
-            </label>
-            <label class="radio">
-              <input type="radio" name="download_type" value="video">
-              Video (MKV)
-            </label>
-            <label class="radio">
-              <input type="radio" name="download_type" value="audio">
-              Audio (MP3)
-            </label>
-          </div>
-        </div>
+    </section>
+    <section>
+      <div class="container" id="downloads">
+        <h2 class="title is-5">Downloads</h2>
+        <p class="content" id="noDownloads">No Downloads!</p>
       </div>
-      <div class="field is-horizontal">
-        <div class="field-label">
-          <!-- Left empty for spacing -->
-        </div>
-        <div class="field-body">
-          <button class="button is-primary" onclick="download()">
-            Download Now
-          </button>
-        </div>
+    </section>
+    <section>
+      <div class="container" style="margin-top: 2em;">
+        <h2 class="title is-5">Files Available</h2>
+        <p class="content" id="noAvailableFiles">No Downloads!</p>
+        <table class="table is-hidden" id="availableFiles">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Files</th>
+              <th>Management</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </div>
-    </div>
-  </section>
-  <section>
-    <div class="container" id="downloads">
-      <h2 class="title is-5">Downloads</h2>
-      <p class="content" id="noDownloads">No Downloads!</p>
-    </div>
-  </section>
-  <section>
-    <div class="container" style="margin-top: 2em">
-      <h2 class="title is-5">Files Available</h2>
-      <p class="content" id="noAvailableFiles">No Downloads!</p>
-      <table class="table is-hidden" id="availableFiles">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Files</th>
-            <th>Management</th>
-          </tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
-    </div>
-  </section>
-  <footer class="footer has-background-white">
-    <div class="content has-text-centered">
-      <p>
-        Version 1.0.0 - Licensed under the <a href="https://opensource.org/licenses/mit-license.php">MIT License</a> - See <a href="https://github.com/Caligatio/youtube-archiver/">YouTube Archiver GitHub</a> for More Information
-      </p>
-    </div>
-  </footer>
-</body>
-
+    </section>
+    <footer class="footer has-background-white">
+      <div class="content has-text-centered">
+        <p>
+          Version 1.0.0 - Licensed under the <a href="https://opensource.org/licenses/mit-license.php">MIT License</a> -
+          See <a href="https://github.com/Caligatio/youtube-archiver/">YouTube Archiver GitHub</a> for More Information
+        </p>
+      </div>
+    </footer>
+  </body>
 </html>
