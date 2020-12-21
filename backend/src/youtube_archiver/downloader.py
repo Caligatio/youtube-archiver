@@ -113,7 +113,7 @@ def process_hook(updates_queue: Queue[UpdateMessage], update: Dict[str, str], re
             "status": UpdateStatusCode.DOWNLOADING,
             "filename": Path(update["filename"]),
             "downloaded_bytes": int(update["downloaded_bytes"]),
-            "total_bytes": int(update["total_bytes"]) if update["total_bytes"] else None,
+            "total_bytes": int(update["total_bytes"]) if update.get("total_bytes") else None,
         }
         if req_id is not None:
             downloading_msg["req_id"] = req_id
