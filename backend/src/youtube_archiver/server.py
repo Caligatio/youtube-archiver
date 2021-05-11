@@ -133,7 +133,7 @@ def download_future_handler(
             {"status": UpdateStatusCode.ERROR, "msg": f'"{exc.key}" already downloaded', "req_id": req_id}
         )
         logger.info('Request %s for "%s" was already downloaded', req_id, exc.key)
-    except Exception as exc:
+    except Exception as exc:  # noqa: B902
         updates_queue.sync_q.put_nowait({"status": UpdateStatusCode.ERROR, "msg": str(exc), "req_id": req_id})
         logger.info("Request %s got an exception", req_id, exc_info=True)
 
