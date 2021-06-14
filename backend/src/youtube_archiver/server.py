@@ -239,6 +239,16 @@ async def cleanup_background_tasks(app: web.Application) -> None:
         await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
 
+async def init_queue(app: web.Application) -> None:
+    """
+    Janus Queues require the asyncio event loop to be running so this creations needs to be done in a start-up handler
+    rather than the synchronous `server` function.
+
+    :param app: Reference to the overall application.
+    """
+    app["updates_queue"] = Queue()
+
+
 def server(
     download_dir: pathlib.Path, download_prefix: str, port: int, ffmpeg_dir: Optional[pathlib.Path] = None
 ) -> None:
@@ -251,6 +261,7 @@ def server(
     :param ffmpeg_dir: Directory containing the FFmpeg binaries.
     """
     app = web.Application()
+    app.on_startup.append(init_queue)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
 
@@ -258,7 +269,6 @@ def server(
     app["download_prefix"] = pathlib.Path(download_prefix)
     app["ffmpeg_dir"] = ffmpeg_dir
     app["websockets"] = WeakSet()
-    app["updates_queue"] = Queue()
 
     app.add_routes(
         [
