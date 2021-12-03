@@ -9,7 +9,14 @@ but can be run without the use of Docker with some work.
 
 ## Usage
 
-Assuming you have a working Docker installation:
+If you would like to use the pre-built image:
+
+```console
+# You may want to mount a volume into /data, it needs to be globally R/W
+docker run -ti -p 8080:8080 ghcr.io/caligatio/youtube-archiver:master
+```
+
+If you would like to build the image yourself:
 
 ```console
 git clone https://github.com/Caligatio/youtube-archiver.git
