@@ -16,7 +16,7 @@ line_length = 120
 python = "^3.7"
 janus = "^0.6.1"
 mypy_extensions = { version = "^0.4.3", python = "<3.8" }
-aiohttp = "^3.7.4"
+aiohttp = "^3.8.5"
 youtube_dl = "^2021.4.26"
 
 [tool.poetry.dev-dependencies]
