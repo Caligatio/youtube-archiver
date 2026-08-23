@@ -1,13 +1,12 @@
-FROM python:3-slim-trixie as wheel_builder
-
-RUN pip3 install poetry
+FROM python:3-slim AS wheel_builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 COPY backend ./backend
 
-RUN cd backend && poetry build && mkdir /out/ && cp dist/*.whl /out/
+RUN cd backend && uv build && mkdir /out/ && cp dist/*.whl /out/
 
 # Final image
-FROM python:3-slim-trixie
+FROM python:3-slim
 
 ENV PYTHONUNBUFFERED=1
 # yt-dlp shells out to Deno to solve YouTube's JS challenges (see backend/pyproject.toml). Deno itself is installed
