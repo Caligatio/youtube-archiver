@@ -1,12 +1,6 @@
-import sys
 from enum import Enum, auto
 from pathlib import Path
-from typing import NamedTuple, Optional, Union
-
-if sys.version_info > (3, 7):
-    from typing import Literal, TypedDict
-else:
-    from mypy_extensions import Literal, TypedDict
+from typing import Literal, NamedTuple, TypedDict
 
 
 class UpdateStatusCode(Enum):
@@ -25,15 +19,15 @@ class DownloadResult(NamedTuple):
     pretty_name: str
     key: str
     info_file: Path
-    video_file: Optional[Path]
-    audio_file: Optional[Path]
+    video_file: Path | None
+    audio_file: Path | None
 
 
 class DeletedUpdate(TypedDict):
     """Realtime update message indicating a key was deleted."""
 
     status: Literal[UpdateStatusCode.DELETED]
-    key: Optional[str]
+    key: str | None
 
 
 class _ErrorUpdateNoReqID(TypedDict):
@@ -68,7 +62,7 @@ class _DownloadingUpdateNoReqID(TypedDict):
     status: Literal[UpdateStatusCode.DOWNLOADING]
     filename: Path
     downloaded_bytes: int
-    total_bytes: Optional[int]
+    total_bytes: int | None
 
 
 class DownloadingUpdate(_DownloadingUpdateNoReqID, total=False):
@@ -85,8 +79,8 @@ class _CompletedUpdateNoReqID(TypedDict):
     key: str
     path: Path
     info_file: Path
-    video_file: Optional[Path]
-    audio_file: Optional[Path]
+    video_file: Path | None
+    audio_file: Path | None
 
 
 class CompletedUpdate(_CompletedUpdateNoReqID, total=False):
@@ -96,4 +90,4 @@ class CompletedUpdate(_CompletedUpdateNoReqID, total=False):
 
 
 # Type that contains all possible realtime update message types
-UpdateMessage = Union[DeletedUpdate, DownloadedUpdate, DownloadingUpdate, CompletedUpdate, ErrorUpdate]
+UpdateMessage = DeletedUpdate | DownloadedUpdate | DownloadingUpdate | CompletedUpdate | ErrorUpdate

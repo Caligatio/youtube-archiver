@@ -7,7 +7,6 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from json.decoder import JSONDecodeError
-from typing import Optional
 from uuid import uuid4
 from weakref import WeakSet
 
@@ -180,7 +179,7 @@ async def download_handler(request: web.Request) -> web.Response:
         request.app["ffmpeg_dir"],
     )
     # typeshed has a bug, see https://github.com/python/typeshed/pull/3935
-    future.add_done_callback(partial(download_future_handler, request.app["updates_queue"], req_id))  # type: ignore
+    future.add_done_callback(partial(download_future_handler, request.app["updates_queue"], req_id))
 
     return web.json_response({"req_id": req_id}, status=202)
 
@@ -249,9 +248,7 @@ async def init_queue(app: web.Application) -> None:
     app["updates_queue"] = Queue()
 
 
-def server(
-    download_dir: pathlib.Path, download_prefix: str, port: int, ffmpeg_dir: Optional[pathlib.Path] = None
-) -> None:
+def server(download_dir: pathlib.Path, download_prefix: str, port: int, ffmpeg_dir: pathlib.Path | None = None) -> None:
     """
     Starts the API server.
 
