@@ -73,9 +73,8 @@ function download() {
     if (this.status === 202) {
       const resp = JSON.parse(this.response)
       trackedIds.add(resp.req_id)
-      document.getElementById(
-        'downloads'
-      ).innerHTML += `<div id="${resp.req_id}:div"><h3 class="subtitle is-6">Request ${resp.req_id} for ${params.url}</h3></div>`
+      document.getElementById('downloads').innerHTML +=
+        `<div id="${resp.req_id}:div"><h3 class="subtitle is-6">Request ${resp.req_id} for ${params.url}</h3></div>`
       document.getElementById('noDownloads').classList.add('is-hidden')
     }
   }
