@@ -29,7 +29,7 @@ def server_cli() -> int:
     log_level = getattr(logging, args.logging)
     logging.basicConfig(level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     ytdl_logger = logging.getLogger("ytdl")
-    # Things that youtube-dl considers warnings can be squelched
+    # Things that yt-dlp considers warnings can be squelched
     ytdl_logger.setLevel(level=max(logging.ERROR, log_level))
 
     server(args.download_dir, args.downloads_prefix, args.port, args.ffmpeg_dir)
@@ -39,7 +39,7 @@ def server_cli() -> int:
 
 def download_cli() -> int:
     """
-    Quasi-debugging CLI entrypoint that uses youtube-dl to download a video/audio clip.
+    Quasi-debugging CLI entrypoint that uses yt-dlp to download a video/audio clip.
 
     :return: 0 on success
     """

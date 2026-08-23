@@ -11,14 +11,14 @@ from tempfile import mkdtemp
 from typing import Any, Dict, List, Optional, Tuple
 
 from janus import Queue
-from youtube_dl import YoutubeDL
-from youtube_dl.postprocessor.ffmpeg import FFmpegMergerPP, encodeArgument, encodeFilename, prepend_extension
-from youtube_dl.utils import sanitize_filename
+from yt_dlp import YoutubeDL
+from yt_dlp.postprocessor.ffmpeg import FFmpegMergerPP, encodeArgument, prepend_extension
+from yt_dlp.utils import encodeFilename, sanitize_filename
 
 from .custom_types import DownloadedUpdate, DownloadingUpdate, DownloadResult, UpdateMessage, UpdateStatusCode
 
 logger = logging.getLogger(__name__)
-# youtube-dl irritatingly prints log messages directly to stderr/stdout if you don't give it a logger
+# yt-dlp irritatingly prints log messages directly to stderr/stdout if you don't give it a logger
 ytdl_logger = logging.getLogger("ytdl")
 ytdl_logger.addHandler(logging.NullHandler())
 
@@ -41,23 +41,23 @@ def process_output_dir(
     download_dir: Path, output_dir: Path, download_video: bool, extract_audio: bool
 ) -> DownloadResult:
     """
-    Parses the output from a youtube-dl run and determines which files are the finalized video and/or audio files.
+    Parses the output from a yt-dlp run and determines which files are the finalized video and/or audio files.
 
     Moves these from `download_dir` to the specified destination, effectively deleting intermediate files.
 
-    :param download_dir: Directory that contains all the youtube-dl downloaded files
+    :param download_dir: Directory that contains all the yt-dlp downloaded files
     :param output_dir: Desired output directory
     :param download_video: Flag indicating whether video is to be retained
     :param extract_audio: Flag indicating whether audio is to be retained
     :return: Tuple containing information and finalized paths for all the files
     """
-    # youtube-dl has a really janky API that returns very little information in terms of what was actually downloaded.
+    # yt-dlp has a really janky API that returns very little information in terms of what was actually downloaded.
     # We therefore have to make some assumptions:
     #  * If video was requested, the preferred video should be a .mkv file
     #  * If audio was requested, it will be a in .mp3
     #  * If video was requested but the source doesn't support separate bestvideo and bestaudio, the video file will be
     #    whatever file was downloaded (using best)
-    # We additionally had to tell youtube-dl to not delete intermediate files if we wanted audio so clear those out.
+    # We additionally had to tell yt-dlp to not delete intermediate files if we wanted audio so clear those out.
     info_file = list(download_dir.glob("*.json"))[0]
     with info_file.open() as f_in:
         metadata = json.load(f_in)
@@ -82,13 +82,14 @@ def process_output_dir(
     # Audio identification performed first otherwise the mp3 would be picked as the fallback option if no mkv present
     if download_video:
         try:
-            # Conceivably there are two mkv files, choose the one with the shortest name as youtube-dl includes the
+            # Conceivably there are two mkv files, choose the one with the shortest name as yt-dlp includes the
             # format number in the original filename but not the merged output name.
             video_file = sorted(download_dir.glob("*.mkv"), key=lambda x: len(x.name))[0]
         except IndexError:
             # If a merge didn't happen, search for the downloaded streams for one that contains video.  Just assume
-            # that only 1 format was downloaded that had video and use it.
-            for requested_format in metadata["requested_formats"]:
+            # that only 1 format was downloaded that had video and use it.  "requested_formats" is only present when
+            # multiple formats were merged; fall back to the top-level metadata for a single "best" download.
+            for requested_format in metadata.get("requested_formats", [metadata]):
                 if requested_format["vcodec"] != "none":
                     video_file = list(download_dir.glob(f"*.{requested_format['ext']}"))[0]
                     break
@@ -102,7 +103,7 @@ def process_output_dir(
 
 def process_hook(updates_queue: Queue[UpdateMessage], update: Dict[str, str], req_id: Optional[str] = None) -> None:
     """
-    A youtube-dl progress callback hook that puts a slightly reformated update into the `update_queue`.
+    A yt-dlp progress callback hook that puts a slightly reformated update into the `update_queue`.
 
     :param updates_queue: The queue to put the modified update into
     :param update: The received update from youtube-dl
@@ -131,6 +132,9 @@ def _ffmpeg_monkey_patch(
     """
     A rather gross monkey patch to hack in the ability to transcode merged audio to AAC if necessary.
 
+    This mirrors yt-dlp's own ``FFmpegMergerPP.run`` (which maps each requested format into the merged output by
+    index) but additionally transcodes any non-AAC audio stream instead of just stream-copying it.
+
     :param self: This monkey patch is for a class method so this is the normal "self" parameter
     :param info: This is expected by the original method
     :param quality: Extra argument added by the monkey patch, the AAC VBR quality (1-5)
@@ -139,18 +143,25 @@ def _ffmpeg_monkey_patch(
     filename = info["filepath"]
     temp_filename = prepend_extension(filename, "temp")
 
-    # Only need to transcode if the source audio isn't already AAC
-    if self.get_audio_codec(info["__files_to_merge"][1]) != "aac":
-        # Making an assumption that we're using FFmpeg here.  If the Fraunhofer FDK AAC codec is available, prefer it
-        encoders_output = run(  # noqa: S603
-            [encodeFilename(self.executable), encodeArgument("-encoders")], capture_output=True
-        )
-        encoder = "libfdk_aac" if encoders_output.stdout.find(b"libfdk_aac") != -1 else "aac"
-        args = ["-c", "copy", "-map", "0:v:0", "-map", "1:a:0", "-c:a", encoder, "-q:a", str(quality)]
-    else:
-        args = ["-c", "copy", "-map", "0:v:0", "-map", "1:a:0"]
+    args = ["-c", "copy"]
+    audio_stream_idx = 0
+    for stream_idx, requested_format in enumerate(info["requested_formats"]):
+        if requested_format.get("acodec") != "none":
+            args.extend(["-map", f"{stream_idx}:a:0"])
 
-    self._downloader.to_screen('[ffmpeg] Merging formats into "%s"' % filename)
+            # Only need to transcode if the source audio isn't already AAC
+            if self.get_audio_codec(requested_format["filepath"]) != "aac":
+                # Assuming we're using FFmpeg here.  If the Fraunhofer FDK AAC codec is available, prefer it
+                encoders_output = run(  # noqa: S603
+                    [encodeFilename(self.executable), encodeArgument("-encoders")], capture_output=True
+                )
+                encoder = "libfdk_aac" if encoders_output.stdout.find(b"libfdk_aac") != -1 else "aac"
+                args.extend([f"-c:a:{audio_stream_idx}", encoder, f"-q:a:{audio_stream_idx}", str(quality)])
+            audio_stream_idx += 1
+        if requested_format.get("vcodec") != "none":
+            args.extend(["-map", f"{stream_idx}:v:0"])
+
+    self.to_screen(f'Merging formats into "{filename}"')
     self.run_ffmpeg_multiple_files(info["__files_to_merge"], temp_filename, args)
     os.rename(encodeFilename(temp_filename), encodeFilename(filename))
     return info["__files_to_merge"], info
@@ -199,7 +210,7 @@ def download(
     FFmpegMergerPP.run = _ffmpeg_monkey_patch
 
     tmp_out = Path(mkdtemp())
-    # Setting both the automatic subs and manual subs is fine, the youtube-dl will prefer manual subs if present
+    # Setting both the automatic subs and manual subs is fine, yt-dlp will prefer manual subs if present
     ytdl_opt = {
         "noplaylist": "true",
         "format": "bestvideo[vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best" if download_video else "bestaudio/best",
@@ -233,7 +244,9 @@ def download(
                 raise AlreadyDownloaded("File already downloaded", pretty_name)
 
             with (tmp_out / "info.json").open("w") as f_out:
-                json.dump(info, f_out)
+                # sanitize_info() strips out anything that isn't JSON-serializable (e.g. compiled regexes, HTTP
+                # header objects) that yt-dlp may stash on the info dict.
+                json.dump(ytdl.sanitize_info(info), f_out)
 
             ytdl.download_with_info_file(tmp_out / "info.json")
 
