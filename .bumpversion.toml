@@ -3,10 +3,11 @@ current_version = "1.3.0"
 commit = true
 tag = true
 sign_tags = true
-post_bump_hooks = [
-    "uv version {new_version} --project backend",
-    "npm --prefix frontend version {new_version} --no-git-tag-version --allow-same-version",
+allow_shell_hooks = true
+pre_commit_hooks = [
+    "uv version $BVHOOK_NEW_VERSION --project backend",
+    "npm --prefix frontend version $BVHOOK_NEW_VERSION --no-git-tag-version --allow-same-version",
 ]
- 
+
 [[tool.bumpversion.files]]
 filename = "frontend/src/index.html"
