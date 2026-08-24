@@ -1,6 +1,6 @@
 {
   "name": "youtube-archiver",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Front-end UI for YouTube Archiver",
   "browser": "./src/script.js",
   "scripts": {
