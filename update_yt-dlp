@@ -1,0 +1,31 @@
+#!/bin/sh
+# Periodically checks for yt-dlp updates and restarts the api process if a
+# newer version was installed, so the update actually takes effect.
+set -eu
+
+INTERVAL="${YT_DLP_UPDATE_INTERVAL:-86400}"   # seconds; default once/day
+
+if [ "${YT_DLP_AUTO_UPDATE:-true}" != "true" ]; then
+    echo "yt-dlp auto-update disabled (YT_DLP_AUTO_UPDATE=${YT_DLP_AUTO_UPDATE:-})"
+    exec sleep infinity
+fi
+
+get_version() {
+    python3 -c 'from importlib.metadata import version; print(version("yt-dlp"))' 2>/dev/null || echo unknown
+}
+
+while true; do
+    OLD_VERSION="$(get_version)"
+
+    if pip3 install --no-cache-dir --upgrade --root-user-action=ignore yt-dlp[default,deno] >/dev/null; then
+        NEW_VERSION="$(get_version)"
+        if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+            echo "yt-dlp updated: $OLD_VERSION -> $NEW_VERSION; restarting api"
+            supervisorctl -c /etc/supervisor/supervisord.conf restart api
+        fi
+    else
+        echo "yt-dlp update check failed, will retry next cycle" >&2
+    fi
+
+    sleep "$INTERVAL"
+done
