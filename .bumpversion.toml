@@ -6,7 +6,9 @@ sign_tags = true
 allow_shell_hooks = true
 pre_commit_hooks = [
     "uv version $BVHOOK_NEW_VERSION --project backend",
+    "git add backend/pyproject.toml backend/uv.lock",
     "npm --prefix frontend version $BVHOOK_NEW_VERSION --no-git-tag-version --allow-same-version",
+    "git add frontend/package.json frontend/package-lock.json",
 ]
 
 [[tool.bumpversion.files]]
